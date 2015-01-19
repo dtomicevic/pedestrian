@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def grid_search(grid, inputs, targets, threads=cpu_count(), verbose=3):
-    model = GridSearchCV(svm.SVC(cache_size=2000), grid, n_jobs=threads, verbose=verbose)
+    estimator = svm.SVC(cache_size=2000)
+    model = GridSearchCV(estimator, grid, n_jobs=threads, verbose=verbose)
     model.fit(inputs, targets)
     return model.best_estimator_
 
