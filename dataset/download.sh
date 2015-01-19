@@ -13,4 +13,4 @@ wget http://www.cis.upenn.edu/~jshi/ped_html/$dbname.zip
 tar -xzf $dbname.zip
 rm $dbname.zip
 
-echo 'all done!'
+echo 'the dataset is downloaded and ready to use!'
