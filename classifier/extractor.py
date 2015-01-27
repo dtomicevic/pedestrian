@@ -82,8 +82,11 @@ def window(image, d, x, y):
         returns: array
             a binary array with (2 * d + 1)^2 elements
     """
-    w = image[(x - d):(x + d + 1), (y - d):(y + d + 1)]
-    return binarize(w, 0.5).reshape(-1)
+    b, g, r = image
+
+    w = lambda img: img[(x - d):(x + d + 1), (y - d):(y + d + 1)].reshape(-1)
+
+    return binarize(np.hstack([w(b), w(g), w(r)]), 0.5)
 
 
 def samples(s, d):
@@ -100,6 +103,7 @@ def samples(s, d):
             tuples contain two elements, an input vector and a target vector
             extracted from a given sample
     """
+    shape = s.proc[0].shape
 
     # generate a cartesian product of all possible point coordinates given
     # image shape and offset d
@@ -109,7 +113,7 @@ def samples(s, d):
     positive = imap(lambda xy: (window(s.proc, d, *xy), 1),
                     ifilter(lambda xy: on_edge(s.mask, *xy),
                     product(*map(lambda x: xrange(d, x - d),
-                            s.proc.shape))))
+                            shape))))
 
     # create an infinite uniform random sampling list of point coordinates
     # inside the given image
@@ -119,7 +123,7 @@ def samples(s, d):
     negative = imap(lambda xy: (window(s.proc, d, *xy), 0),
                     ifilter(lambda xy: not s.mask.item(*xy),
                     imap(lambda o: map(lambda x: randint(d, x - d), o),
-                         repeat(s.proc.shape))))
+                         repeat(shape))))
 
     # zip a finite list of positive examples and an infinite list of negative
     # examples to get an equal amount of positive and negative examples and has
@@ -129,7 +133,7 @@ def samples(s, d):
     return list(chain(*zip(positive, negative)))
 
 
-def generate(dataset, w):
+def generate(dataset, w, threaded=True):
     """ generate a list of classifier data samples from all dataset samples
         with a parallel implementation using a thread pool
 
@@ -145,12 +149,17 @@ def generate(dataset, w):
             iterator contains all the positive and negative data samples
             generated from the dataset
     """
+
+    if not threaded:
+        logger.info('extracting samples using 1 thread')
+        return chain(*map(partial(samples, d=(w - 1) / 2), dataset.samples))
+
     logger.info('extracting samples using {0} threads'.format(cpu_count()))
     return chain(*pool.map(partial(samples, d=(w - 1) / 2), dataset.samples))
 
 
 @profile
-def extract(dataset, w=11, N=25000):
+def extract(dataset, w=11, N=25000, threaded=True):
     """ extracts the training inputs and targets from the dataset
 
         dataset: object
@@ -180,11 +189,11 @@ def extract(dataset, w=11, N=25000):
     #
     # zips the sample tuples to divide input vectors in a separate tuple and
     # target vectors in a separate tuple
-    inputs, targets = zip(*sample(list(generate(dataset, w)), N))
+    ins, ts = zip(*sample(list(generate(dataset, w, threaded=threaded)), N))
 
     # vertically concatenates list of numpy arrays and concatenates a list
     # of target vectors to a numpy array
-    return (np.vstack(inputs), np.array(targets))
+    return (np.vstack(ins), np.array(ts))
 
 
 # process pool for concurrent sample generation

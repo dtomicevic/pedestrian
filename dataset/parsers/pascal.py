@@ -56,7 +56,7 @@ def parse_bbox(line):
     return BoundingBox.fromlist(values)
 
 
-def parse(filename):
+def parse(filename, verbose=False):
     """ parses the PASCAL compatible annotation file
 
     filename: string
@@ -69,7 +69,9 @@ def parse(filename):
         raise ValueError('filename can\'t be emtpy')
 
     sample = Sample()
-    logger.info(filename)
+
+    if verbose:
+        logger.info(filename)
 
     with open(filename) as f:
         for line in f:

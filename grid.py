@@ -27,8 +27,8 @@ def generate_sets(dataset, w=11, N=50000):
 if __name__ == '__main__':
     grid = {
         'kernel': ['rbf'],
-        'C': [2e-5, 2e-3, 2e-1, 1, 2e1, 2e3, 2e5, 2e10],
-        'gamma': [2e-15, 2e-11, 2e-7, 2e-3, 2e-1, 1, 2e1, 2e3]
+        'C': [2e-5, 2e-3, 2e-1, 1, 2e1, 2e3, 2e5],
+        'gamma': [2e-11, 2e-7, 2e-3, 2e-1, 1, 2e1, 2e3]
     }
 
     dataset = PennFudanDataset('dataset/PennFudanPed')

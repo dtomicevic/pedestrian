@@ -2,6 +2,7 @@ from dataset import PennFudanDataset
 from processing import process, pipeline
 from processing.filters import grayscale, bilateral, canny
 from sklearn.metrics import precision_recall_fscore_support
+from multiprocessing import cpu_count, Pool
 from sklearn.cross_validation import train_test_split
 from classifier import extractor
 from sklearn import svm
@@ -11,8 +12,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-dataset = PennFudanDataset('dataset/PennFudanPed')
 
 
 def create_pipeline(threshold=15):
@@ -24,7 +23,7 @@ def create_pipeline(threshold=15):
         return: function
             function containing and entire pipeline of chained filters
     """
-    return pipeline([grayscale(), bilateral(), canny(threshold)])
+    return pipeline([canny(threshold)])
 
 
 @profile
@@ -49,13 +48,13 @@ def train_model(inputs, targets):
     # splits the dataset into training and validations ets with ratio 1/7 ratio
     # for training set and 6/7 ratio for validation set
     x_train, x_test, y_train, y_test = \
-        train_test_split(inputs, targets, test_size=6/7.0)
+        train_test_split(inputs, targets, test_size=0.5)
 
     # trains an SVM model with default parameters and rbf kernel. in this stage
     # we're not worried about totally optimiozing the SVM model. default
     # settings work fine. once we optimize filter parameters, SVM grid search
     # will come to place to select the best model for chosen filter parameters
-    model = svm.SVC(kernel='rbf')
+    model = svm.SVC(kernel='rbf', cache_size=1000)
     model.fit(x_train, y_train)
 
     # test the trained model on the test data and report back precision, recall
@@ -66,14 +65,26 @@ def train_model(inputs, targets):
     return score[:3]
 
 
+def train_single(cw):
+    c, w = cw
+
+    data = PennFudanDataset('dataset/PennFudanPed')
+    data.samples = data.samples[:30]
+    process(data, create_pipeline(threshold=c))
+    inputs, targets = extractor.extract(data, w=w, N=100000, threaded=False)
+    score = train_model(inputs, targets)
+
+    print('c={0} w={1} p={2:.4f} r={3:.4f} f1={4:.4f}'.format(c, w, *score))
+    return (cw, score)
+
+
 if __name__ == '__main__':
     # this loop implements grid search over viable parameters for canny
     # threshold and window size to find the best one
-    for i, (c, w) in enumerate(product(xrange(5, 100, 5), [7, 11, 15])):
-        logger.info('iteration {0}: canny={1}, window={2}'.format(i, c, w))
+    pool = Pool(cpu_count())
+    res = pool.map(train_single, list(product(xrange(5, 100, 5), [7, 11, 15])))
 
-        process(dataset, create_pipeline(threshold=c))
-        inputs, targets = extractor.extract(dataset, w=w, N=70000)
-        score = train_model(inputs, targets)
+    for cw, score in res:
+        print cw, score
 
-        print('precision={0:.4f} recall={1:.4f}, f1={2:.4f}'.format(*score))
+    print 'best by f1 =>', max(res, key=lambda x: x[1][2])

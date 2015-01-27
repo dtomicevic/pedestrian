@@ -1,5 +1,6 @@
 from utils.profiling import profile
 from functools import reduce, partial
+from filters import bilateral
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,14 @@ def pipeline(filters):
         returns: function
             a function representing a filter chain of ordered filters
     """
-    return partial(reduce, lambda acc, f: f(acc), filters)
+    pipe = partial(reduce, lambda acc, f: f(acc), filters)
+    bil = bilateral()
+
+    def procme(img):
+        img = bil(img)
+        return pipe(img)
+
+    return lambda img: map(procme, [img[:, :, 0], img[:, :, 1], img[:, :, 2]])
 
 
 @profile
