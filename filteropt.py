@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def create_pipeline(threshold=15):
+def create_pipeline(threshold=25):
     """creates a filter pipeline using supplied arguments
 
         threshold: int
