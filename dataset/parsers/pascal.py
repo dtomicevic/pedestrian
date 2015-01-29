@@ -69,6 +69,7 @@ def parse(filename, verbose=False):
         raise ValueError('filename can\'t be emtpy')
 
     sample = Sample()
+    sample.name = filename.split('/')[-1].split('.')[0]
 
     if verbose:
         logger.info(filename)

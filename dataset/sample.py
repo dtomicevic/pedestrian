@@ -5,7 +5,7 @@ class Sample(object):
         boxes surrounding pedestrians in the image
     """
 
-    def __init__(self, image=None, mask=None, bboxes=None):
+    def __init__(self, image=None, mask=None, bboxes=None, name=None):
         """ create a sample from a pedestrian image, image mask and a list
             of bounding boxes
 
@@ -21,6 +21,7 @@ class Sample(object):
             bboxes: list of BoundingBox
                 a list containing bounding boxes for pedestrian on the image
         """
+        self.name = name
         self.image = image,
         self.mask = mask,
         self.bboxes = bboxes if bboxes is not None else []

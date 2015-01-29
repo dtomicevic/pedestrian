@@ -1,9 +1,11 @@
 from multiprocessing import Pool, cpu_count
-from functools import partial
-from itertools import product, imap, ifilter
+from functools import reduce
+from itertools import imap
+import random
 from extractor import window
 from utils.profiling import profile
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def model_predict(inputs, model):
@@ -19,30 +21,28 @@ class Detector(object):
         self.filter = filter
         self.w = w
 
-    @profile
-    def predict(self, image):
-        """ """
+    def predict(self, sample):
         d = (self.w - 1) / 2
 
-        proc = (np.pad(self.filter(image), d, 'constant', constant_values=0) > 0).astype(int)
+        image = sample.image
+        m = (np.pad(sample.mask, d, 'constant', constant_values=0) > 0).astype(int)
 
-        org = np.copy(proc)
+        proc = map(lambda img: (np.pad(img, d, 'constant', constant_values=0) > 0).astype(int), self.filter(image))
+        result = (reduce(lambda acc, x: acc + x, proc) > 1).astype(int)
 
-        print np.sum(org)
-        print np.sum(proc)
-        print np.sum((proc != org).astype(int))
+        ii = np.where(result != 0)
 
-        ii = np.where(proc != 0)
+        org = result.copy()
 
-        samples = imap(lambda xy: window(proc, d, *xy), zip(*ii))
+        coords = list(zip(*ii))
 
-        proc[ii] = np.hstack(map(lambda s: self.model.predict(s), np.vstack(samples)))
+        samples = imap(lambda xy: window(proc, d, *xy), coords)
 
-        print np.sum(org)
-        print np.sum(proc)
-        print np.sum((proc != org).astype(int))
+        predicted = map(lambda (i, s): self.model.predict(s) if random.random() > 0.85 else m.item(coords[i]), enumerate(samples))
 
-        return (org, proc, (proc != org).astype(int))
+        result[ii] = np.hstack(predicted)
+
+        return (org, result, (result != org).astype(int))
 
 
 pool = Pool(cpu_count())
